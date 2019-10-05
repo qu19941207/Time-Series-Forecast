@@ -1,0 +1,155 @@
+library("tseries")
+library("TSA")
+library("forecast")
+library("ggplot2")
+
+test = function(x) {
+  print(adf.test(x))
+  print(nsdiffs(x, m = 4, test = "ocsb"))
+  print(pp.test(x))
+  acf(x)
+}
+
+sr = function(x){
+  x$resid/sd(x$resid)
+}
+
+aic = function(x,k) {
+  -2*logLik(x)+2*k
+}
+
+bic = function(x,k) {
+  log(length(x))*k - 2*logLik(x)
+}
+
+sk = function(x) {
+  print(skewness(x))
+  print(kurtosis(x))
+}
+
+
+#data <- read.csv("raw data quartely.csv",header = T)
+
+cpi <- ts(data$CPI,start = c(1980,2),freq = 4)
+wage <- ts(data$wage, start = c(1980,2),freq = 4)
+edividend <- ts(data$equity.index.dividend.yield,start = c(1980,2),freq = 4)
+eyield <- ts(data$equity.price.index,start = c(1980,2),freq = 4)
+lt <- ts(data$X10.year,start = c(1980,2),freq = 4)
+st <- ts(data$X3.month,start = c(1980,2),freq = 4)
+cpi_1 <- ts(na.omit(data$cpi_1), start = c(1981,2),freq=4)
+w_1 <- ts(na.omit(data$w_1), start = c(1981,2),freq=4)
+ey_1 <- ts(na.omit(data$ey_1), start = c(1981,2),freq=4)
+ed_1 <- ts(na.omit(data$ed_1), start = c(1981,2),freq=4)
+lt_3 <- ts(na.omit(data$lt_3), start = c(1981,2),freq=4)
+st_1 <- ts(na.omit(data$st_1), start = c(1981,2),freq=4)
+st_2 <- ts(na.omit(data$st_2), start = c(1981,2),freq=4)
+st_3 <- ts(na.omit(data$st_3), start = c(1981,2),freq=4)
+st_4 <- ts(na.omit(data$st_4), start = c(1981,2),freq=4)
+
+plot(cpi,main="Time Series Plot Of Quarterly Price Inflation Rate")
+adf.test(cpi)
+nsdiffs(cpi, m = 4, test = "ocsb")
+pp.test(cpi)
+
+plot(cpi_1)
+adf.test(cpi_1)
+nsdiffs(cpi_1, m=4, test="ocsb")
+pp.test(cpi_1)
+
+cpi_1.cascade = arima(cpi_1, c(3,0,0), include.mean=F)
+cpi_1.cascade
+
+sd(cpi_1.cascade$resid)
+plot(cpi_1.cascade$resid)
+
+cpi_1.cascade.sr = cpi_1.cascade$resid/sd(cpi_1.cascade$resid)
+cpi_1.cascade.ac = acf(cpi_1.cascade.sr)
+
+aic1 = - 2 * logLik(cpi_1.cascade) + 2 * 3
+aic1
+
+bic1 = - 2 * logLik((cpi_1.cascade)) + log(length(cpi_1.cascade)) * 2
+bic1
+
+skewness(cpi_1.cascade.sr)
+kurtosis(cpi_1.cascade.sr)
+jarque.bera.test(cpi_1.cascade.sr)
+
+plot(w_1,main="Time Series Plot of Quarterly Wage Inflation Rate")
+test(w_1)
+
+w_1.cascade = arima(w_1,c(1,0,0),xreg=cpi_1,include.mean = F)
+w_1.cascade
+
+w_1.cascade.sr = sr(w_1.cascade)
+acf(w_1.cascade.sr)
+aic(w_1.cascade,2)
+bic(w_1.cascade,2)
+sk(w_1.cascade.sr)
+jarque.bera.test(w_1.cascade.sr)
+
+qqnorm(w_1.cascade.sr)
+qqline(w_1.cascade.sr)
+
+plot(eyield,main="Time Series Plot of Quarterly Equity Yield")
+plot(ey_1,main="Time Series Plot of Quarterly Equity Yield")
+test(ey_1)
+
+ey_1.cascade = arima(ey_1,c(1,0,0),xreg=cpi_1,include.mean = F)
+ey_1.cascade
+
+ey_1.cascade.sr = sr(ey_1.cascade)
+acf(ey_1.cascade.sr)
+aic(ey_1.cascade,2)
+bic(ey_1.cascade,2)
+sk(ey_1.cascade.sr)
+jarque.bera.test(ey_1.cascade.sr)
+
+
+plot(ed_1,main="Time Series Plot of Quarterly Equity Dividend")
+ed_1.cascade = arima(ed_1 ,c(1,0,0),xreg = matrix(c(cpi_1, ey_1),ncol = 2),include.mean = F)
+ed_1.cascade
+ed_1.cascade.sr = sr(ed_1.cascade)
+acf(ed_1.cascade.sr)
+aic(ed_1.cascade,2)
+bic(ed_1.cascade,2)
+sk(ed_1.cascade.sr)
+jarque.bera.test(ed_1.cascade.sr)
+
+plot(lt,main="Time Series Plot of Quarterly Long-term Bond Yield")
+plot(lt_3,main="Time Series Plot of Quarterly Long-term Bond Yield")
+test(lt_3)
+pacf(lt_3)
+lt_3.cascade = arima(lt_3 ,c(1,0,0),xreg = matrix(c(cpi_1[3:144], ey_1[3:144]),ncol = 2),include.mean = F)
+lt_3.cascade
+lt_3.cascade.sr = sr(lt_3.cascade)
+acf(lt_3.cascade.sr)
+aic(lt_3.cascade,3)
+bic(lt_3.cascade,3)
+sk(lt_3.cascade.sr)
+jarque.bera.test(lt_3.cascade.sr)
+
+plot(st, main="Time Series Plot of Quarterly Short-term Bond Yield")
+plot(st_1, main="Time Series Plot of Quarterly Short-term Bond Yield")
+test(st_1)
+pacf(st_1)
+st_1.cascade = arima(st_1[3:144] ,c(1,0,0),xreg = ey_1[3:144],include.mean = F)
+st_1.cascade
+st_1.cascade.sr = sr(st_1.cascade)
+acf(st_1.cascade.sr)
+aic(st_1.cascade,3)
+bic(st_1.cascade,3)
+sk(st_1.cascade.sr)
+jarque.bera.test(st_1.cascade.sr)
+
+#predict_cpi = predict(cpi_1.cascade,n.ahead = 40)
+#predict_ey = predict(ey_1.cascade,newxreg = predict_cpi$pred,n.ahead = 40)
+#predict_ed = predict(ed_1.cascade,newxreg = matrix(c(predict_cpi$pred, predict_ey$pred),ncol = 2),n.ahead = 40)
+#predict_lt = predict(lt_3.cascade,newxreg = matrix(c(predict_ey$pred,predict_cpi$pred),ncol = 2),n.ahead = 40)
+#predict_st = predict(st_1.cascade,newxreg = matrix(c(predict_lt$pred,predict_ed$pred),ncol = 2),n.ahead = 40)
+
+#write.csv(predict_cpi$pred,"cpi.csv")     
+#write.csv(predict_ey$pred,"ey.csv")  
+#write.csv(predict_ed$pred,"ed.csv")  
+#write.csv(predict_lt$pred,"lt.csv") 
+#write.csv(predict_st$pred,"st.csv")  
